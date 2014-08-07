@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main_fragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    >
+
+    <ListView
+        android:id="@+id/main_activity_listview"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"></ListView>
+
+    <ImageButton
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@android:drawable/ic_menu_mylocation"
+        android:text="New Button"
+        android:id="@+id/main_activity_refresh_location_button"
+        android:padding="3dp"
+        android:layout_gravity="right|bottom" />
+
+</FrameLayout>

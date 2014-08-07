@@ -2,19 +2,29 @@ package hey.rich.edmontonwifi;
 
 import android.app.ActionBar.OnNavigationListener;
 import android.app.Activity;
+import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.ListFragment;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.res.Configuration;
 import android.location.Location;
 import android.os.Bundle;
+import android.support.v4.app.ActionBarDrawerToggle;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.SearchView;
@@ -37,37 +47,75 @@ public class MainActivity extends Activity implements OnNavigationListener,
     private SharedPreferences prefs;
     private int sortChoice;
 
+    // Navigation Drawer Variables
+    private String[] mDrawerTitles;
+    private DrawerLayout mDrawerLayout;
+    private ListView mDrawerList;
+    private ActionBarDrawerToggle mDrawerToggle;
+    private CharSequence mTitle;
+    private CharSequence mDrawerTitle;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ListView lView;
-        lView = (ListView) findViewById(R.id.main_activity_listview);
         WifiList wifiList;
         wifiList = EdmontonWifi.getWifiList(getApplicationContext());
         wifis = wifiList.getAllWifis();
 
-        adapter = new WifiArrayAdapter(this, wifis);
-        lView.setAdapter(adapter);
+        setupDrawer();
 
-        lView.setOnItemClickListener(new OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view,
-                                    int position, long id) {
-                Intent i = new Intent(getApplicationContext(),
-                        WifiViewActivity.class);
-                i.putExtra(WifiViewActivity.WIFI_ID, position);
-                startActivity(i);
+        if (savedInstanceState == null) {
+            selectItem(0);
+        }
+    }
+
+    /**
+     * Sets up the Navigation Drawer
+     */
+    private void setupDrawer() {
+        mTitle = mDrawerTitle = getTitle();
+
+        mDrawerTitles = getResources().getStringArray(R.array.drawer_array);
+        mDrawerList = (ListView) findViewById(R.id.main_left_drawer);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.main_drawer_layout);
+
+        mDrawerList.setAdapter(new ArrayAdapter<String>(this, R.layout.drawer_list_item, mDrawerTitles));
+        mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
+
+        // set a custom shadow that overlays the main content when the drawer opens
+        mDrawerLayout.setDrawerShadow(R.drawable.drawer_shadow, GravityCompat.START);
+        // set up the drawer's list view with items and click listener
+        mDrawerList.setAdapter(new ArrayAdapter<String>(this,
+                R.layout.drawer_list_item, mDrawerTitles));
+        mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
+
+        // enable ActionBar app icon to behave as action to toggle nav drawer
+        getActionBar().setDisplayHomeAsUpEnabled(true);
+        getActionBar().setHomeButtonEnabled(true);
+
+        // ActionBarDrawerToggle ties together the the proper interactions
+        // between the sliding drawer and the action bar app icon
+        mDrawerToggle = new ActionBarDrawerToggle(
+                this,                  /* host Activity */
+                mDrawerLayout,         /* DrawerLayout object */
+                R.drawable.ic_drawer,  /* nav drawer image to replace 'Up' caret */
+                R.string.drawer_open,  /* "open drawer" description for accessibility */
+                R.string.drawer_close  /* "close drawer" description for accessibility */
+        ) {
+            public void onDrawerClosed(View view) {
+                getActionBar().setTitle(mTitle);
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
             }
-        });
 
-        setupRefreshLocationButton();
+            public void onDrawerOpened(View drawerView) {
+                getActionBar().setTitle(mDrawerTitle);
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+        };
+        mDrawerLayout.setDrawerListener(mDrawerToggle);
 
-        updateLocation();
-        // By default let's sort by distance
-        Collections.sort(wifis, new DistanceComparator());
-        adapter.notifyDataSetChanged();
     }
 
     private void setupRefreshLocationButton() {
@@ -136,8 +184,26 @@ public class MainActivity extends Activity implements OnNavigationListener,
         return true;
     }
 
+    /* Called whenever we call invalidateOptionsMenu*/
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        // if nav drawer is open, hide action items related to the content view
+        boolean drawerOpen = mDrawerLayout.isDrawerOpen(mDrawerList);
+        menu.findItem(R.id.menu_sort_wifi_list).setVisible(!drawerOpen);
+        menu.findItem(R.id.menu_clear_search_history).setVisible(!drawerOpen);
+        menu.findItem(R.id.menu_search).setVisible(!drawerOpen);
+        return super.onPrepareOptionsMenu(menu);
+    }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
+        // The action bar home/up action should open or close the drawer.
+        // ActionBarToggle will take care of this
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
@@ -279,5 +345,102 @@ public class MainActivity extends Activity implements OnNavigationListener,
             }
         }
     }
+
+    private class DrawerItemClickListener implements ListView.OnItemClickListener {
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            selectItem(position);
+        }
+    }
+
+    /**
+     * Swaps fragments in the main content view
+     */
+    private void selectItem(int position) {
+        // Create a new fragment and specify the planet to show based on position
+        Fragment fragment = new DataFragment();
+        Bundle args = new Bundle();
+        args.putInt(DataFragment.ARG_DATA_NUMBER, position);
+        fragment.setArguments(args);
+
+        // Insert the fragment by replacing any existing fragment
+        FragmentManager fragmentManager = getFragmentManager();
+        fragmentManager.beginTransaction()
+                .replace(R.id.main_container, fragment)
+                .commit();
+
+        // Highlight the selected item, update the title, and close the drawer
+        mDrawerList.setItemChecked(position, true);
+        setTitle(mDrawerTitles[position]);
+        mDrawerLayout.closeDrawer(mDrawerList);
+    }
+
+    @Override
+    public void setTitle(CharSequence title) {
+        mTitle = title;
+        getActionBar().setTitle(mTitle);
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // Sync the toggle state after onRestoreInstanceState has occurred
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Pass any config change to the drawer toggles
+        mDrawerToggle.onConfigurationChanged(newConfig);
+    }
+
+    /**
+     * Fragment that appears in main_container, shows list of whatever the data is
+     */
+
+    public static class DataFragment extends ListFragment {
+        public static final String ARG_DATA_NUMBER = "data_number";
+
+        public DataFragment() {
+            // Empty constructor required for fragment subclasses
+        }
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+            int i = getArguments().getInt(ARG_DATA_NUMBER);
+            String data = getResources().getStringArray(R.array.drawer_array)[i];
+
+            // TODO: Set up whatever goes in the fragment here
+            ListView lView;
+            lView = (ListView) rootView.findViewById(R.id.main_activity_listview);
+
+          /*  WifiArrayAdapter adapter = new WifiArrayAdapter(getActivity(), wifis);
+            lView.setAdapter(adapter);
+
+            lView.setOnItemClickListener(new OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view,
+                                        int position, long id) {
+                    Intent i = new Intent(getApplicationContext(),
+                            WifiViewActivity.class);
+                    i.putExtra(WifiViewActivity.WIFI_ID, position);
+                    startActivity(i);
+                }
+            });
+
+            setupRefreshLocationButton();
+
+            updateLocation();
+            // By default let's sort by distance
+            Collections.sort(wifis, new DistanceComparator());
+            adapter.notifyDataSetChanged();
+            setListAdapter(adapter);*/
+
+            return rootView;
+        }
+    }
+
 
 }

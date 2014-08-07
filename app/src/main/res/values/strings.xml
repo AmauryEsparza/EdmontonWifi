@@ -16,6 +16,15 @@
         <item>Distance</item>
     </string-array>
 
+    <!-- Titles for main drawer -->
+    <string-array name="drawer_array">
+        <item>Wifi</item>
+    </string-array>
+
+    <!-- Navigation Drawer Strings -->
+    <string name="drawer_open">Open navigation drawer</string>
+    <string name="drawer_close">Close navigation drawer</string>
+
     <!-- ListView Strings -->
     <string name="wifi_list_name">Name</string>
     <string name="wifi_list_distance">Distance</string>
@@ -26,7 +35,7 @@
     <string name="search_label">MainActivitySearch</string>
     <string name="title_activity_search">SearchActivity</string>
     <string name="title_activity_wifi_view">WifiViewActivity</string>
-    
+
     <!-- WifiViewActivity Strings -->
     <string name="title">Title</string>
     <string name="address">Address</string>
